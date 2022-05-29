@@ -17,13 +17,13 @@ contract Campaign {
     uint numRequests;
     uint public approverCount;
 
-    function Campaign (uint minimum) public{
+    constructor (uint minimum){
         //The manager variable will be set to whoever deploys the contract
         manager = msg.sender;
         minimumContribution = minimum;
     }
 
-    modifier restricted() {
+    modifier restricted(){
         require(msg.sender == manager);
         _;
     }
@@ -34,7 +34,7 @@ contract Campaign {
         approverCount++;
     }
 
-    function createRequest(string descriptionIn, uint valueIn, address payable recipientIn) public restricted{
+    function createRequest(string calldata descriptionIn, uint valueIn, address payable recipientIn) public restricted{
         //Get the last index of requests from storage
         Request storage newRequest = requests[numRequests];
         numRequests++;
@@ -47,12 +47,12 @@ contract Campaign {
     }
 
     function approveRequest(uint index) public {
+        Request storage request = requests[index];
         //Sender must be on the list of approvers
         require(approvers[msg.sender]);
         //Sender must not have voted yet
-        require(!(requests[index].approvers[msg.sender]));
+        require(!(request.approvals[msg.sender]));
 
-        Request storage request = requests[index];
         request.approvals[msg.sender] = true;
         request.approvalCount++;
     }
