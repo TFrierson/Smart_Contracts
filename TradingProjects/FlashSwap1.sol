@@ -43,9 +43,6 @@ contract PancakeFlashSwap{
     //Begin receiving the loan to engage performing arbitrage trades
     function startArbitrage(address _tokenToBorrow, uint256 _amountToBorrow) external{
         IERC20(BUSD).safeApprove(address(PANCAKEROUTER), MAX_INT);
-        IERC20(USDT).safeApprove(address(PANCAKEROUTER), MAX_INT);
-        IERC20(CROX).safeApprove(address(PANCAKEROUTER), MAX_INT);
-        IERC20(CAKE).safeApprove(address(PANCAKEROUTER), MAX_INT);
 
         //Get the factory address for the combined tokens
         address pair = IUniswapV2Factory(PANCAKEFACTORY).getPair(_tokenToBorrow, WBNB);
