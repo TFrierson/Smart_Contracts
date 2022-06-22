@@ -14,9 +14,6 @@ contract BasicSwap{
     using SafeERC20 for IERC20;  //Swap approvals
     ISwapRouter public immutable swapRouter;
 
-    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
     //Set the pool's fee to 0.3%
     uint24 poolFee = 3000;
 
@@ -39,20 +36,20 @@ contract BasicSwap{
       withdrawn from the calling address. Then, transfer the "amount" of DAI from the calling
       address into our contract, and use "amount" as the value passed to the second "approve"*/
 
-    function swapExactInputSingle(uint256 amountIn) external returns(uint256 amountOut){
+    function swapExactInputSingle(address _fromToken, address _toToken, uint256 amountIn) external returns(uint256 amountOut){
         //msg.sender must approve this contract
         //TransferHelper's safeapprove does not work!
 
         //Approve the router to spend the DAI
-        IERC20(DAI).safeApprove(address(swapRouter), amountIn);
+        IERC20(_fromToken).safeApprove(address(swapRouter), amountIn);
 
         /*To execute the swap function, we must populate the ExactInputSingleParams with the
           necessary swap data*/
 
         ISwapRouter.ExactInputSingleParams memory params =
             ISwapRouter.ExactInputSingleParams({
-                tokenIn: DAI,
-                tokenOut: WETH,
+                tokenIn: _fromToken,
+                tokenOut: _toToken,
                 fee: poolFee,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
