@@ -43,9 +43,6 @@ contract BasicSwap{
         //msg.sender must approve this contract
         //TransferHelper's safeapprove does not work!
 
-        //Transfer the specified amount of DAI to this contract
-        //IERC20(DAI).safeTransferFrom(msg.sender, address(this), amountIn);
-
         //Approve the router to spend the DAI
         IERC20(DAI).safeApprove(address(swapRouter), amountIn);
 
