@@ -125,6 +125,7 @@ contract PancakeFlashSwap{
 
         //PAY YOURSELF FIRST!!!
         require(profitableTrade(arbitrageResult, amountToPay), "Trade was not profitable!");
+        IERC20(tokenBorrow).transfer(pair, (arbitrageResult - amountToPay));
 
         //NOW PAY THE LOAN BACK!!!
         IERC20(tokenBorrow).transfer(pair, amountToPay);
