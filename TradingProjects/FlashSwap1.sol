@@ -24,6 +24,8 @@ contract PancakeFlashSwap{
     //Token Addresses
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address private constant BUSD = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
+    address private constant CAKE = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82;
+    address private constant CROX = 0x2c094F5A7D1146BB93850f629501eB749f6Ed491;
 
     //Trade variables
     uint256 private deadline = block.timestamp + 1 days;
@@ -39,21 +41,51 @@ contract PancakeFlashSwap{
         return IERC20(_address).balanceOf(address(this));
     }
 
+    //Place a trade
+    function placeTrade(address _fromToken, address _toToken, uint256 _amountIn) private returns(uint256){
+        address pair = IUniswapV2Factory(PANCAKEFACTORY).getPair(_fromToken, _toToken);
+        require(pair != address(0));
+
+        address [] memory path = new address [](2);
+        path[0] = _fromToken;
+        path[1] = _toToken;
+
+        //Get the amounts required for the swap to happen!
+        uint256 amountRequired = IUniswapV2Router01(PANCAKEROUTER).getAmountsOut(_amountIn, path)[1];
+
+        console.log("Amount required: ", amountRequired);
+
+        //Performs Arbitrage -Swap for another token
+        uint256 amountReceived = IUniswapV2Router01(PANCAKEROUTER).swapExactTokensForTokens(_amountIn, 
+                amountRequired, path, address(this), deadline)[1];
+        console.log("Amount received after swap: ", amountReceived);
+
+        require(amountReceived > 0, "Aborted transaction: Trade returned zero");
+        return amountReceived;
+    }
+
+    function profitableTrade(uint256 _output, uint256 _input) internal returns(bool){
+        return(_output > _input);
+    }
+
     //Initiate Arbitrage
     //Begin receiving the loan to engage performing arbitrage trades
     function startArbitrage(address _tokenToBorrow, uint256 _amountToBorrow) external{
         IERC20(BUSD).safeApprove(address(PANCAKEROUTER), MAX_INT);
+        IERC20(CROX).safeApprove(address(PANCAKEROUTER), MAX_INT);
+        IERC20(CAKE).safeApprove(address(PANCAKEROUTER), MAX_INT);
 
-        //Get the factory address for the combined tokens
+        //Get the factory address for the combined tokens. This is going to return the pair for _tokenToBorrow and
+        //wBNB.
         address pair = IUniswapV2Factory(PANCAKEFACTORY).getPair(_tokenToBorrow, WBNB);
 
         //Return error if the pair doesn't exist
         require(pair != address(0), "Pool does not exist!");
-
-        //Find out which token has the amount and assign it
+        
         address token0 = IUniswapV2Pair(pair).token0();
         address token1 = IUniswapV2Pair(pair).token1();
 
+        //Find out which token has the amount and assign it. This will be _tokenToBorrow
         uint256 amount0Out = _tokenToBorrow == token0 ? _amountToBorrow : 0;
         uint256 amount1Out = _tokenToBorrow == token1 ? _amountToBorrow : 0;
 
@@ -81,11 +113,18 @@ contract PancakeFlashSwap{
         uint256 amountToPay = amount + fee;
 
         //DO ARBITRAGE!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+        //AmountIn (BUSD) -> AmountOut (CROX), AmountIn(CROX) -> AmountOut(CAKE), AmountIn(CAKE) -> AmountOut(BUSD)
+        //Pay BUSD back!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        uint256 loanAmount = _amount0 > 0 ? _amount0 : _amount1;
+        uint256 trade1ReceivedCoin = placeTrade(BUSD, CROX, loanAmount);
+        uint256 trade2ReceivedCoin = placeTrade(CROX, CAKE, trade1ReceivedCoin);
+        uint256 arbitrageResult = placeTrade(CAKE, BUSD, trade2ReceivedCoin);
         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         //PAY YOURSELF FIRST!!!
+        require(profitableTrade(arbitrageResult, amountToPay), "Trade was not profitable!");
 
         //NOW PAY THE LOAN BACK!!!
         IERC20(tokenBorrow).transfer(pair, amountToPay);
